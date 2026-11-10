@@ -7,7 +7,7 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
 
 | Phase (spec §14) | Status |
 |---|---|
-| 0 — Foundation (compose stack, config, health, logging, lint, CI) | Done. CI workflow written and linted with actionlint; **not yet run on GitHub** (no remote). |
+| 0 — Foundation (compose stack, config, health, logging, lint, CI) | Done locally. **First GitHub CI run failed** (MinIO image no longer pullable); fix ready in the working tree, not pushed. |
 | 1 — Domain model + deterministic demo | Done |
 | 2 — Approval integrity + reliability | Done |
 | 3 — Frontend demo | Done; full flagship flow verified in Chromium via Playwright |
@@ -29,7 +29,7 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
 | AT-09 | Worker death/replay: no duplicate issues or revisions | Pass | `test_reliability.py` — simulated crashes, lease expiry, replay, zombie worker |
 | AT-10 | Idempotency key replay / changed body → 409 | Pass | `test_at10_*` |
 | AT-11 | Malformed PDF never becomes fabricated extraction | Pass | `test_at11_*` (malformed, image-only, disguised, path traversal) |
-| AT-12 | End-to-end UI demo, fixture mode (+ optional live LLM) | **Fixture mode: pass** (Playwright, 2 consecutive runs). **Live LLM: not run** (no API key). | `frontend/e2e/flagship.spec.ts` |
+| AT-12 | End-to-end UI demo, fixture mode (+ optional live LLM) | **Fixture mode: pass** (Playwright, 3 runs incl. one on the final rebuilt images). **Live LLM: not run** (no API key). | `frontend/e2e/flagship.spec.ts` |
 | AT-13 | Audit reconstructs change/approval events | Pass | `test_flagship.py` (ordered `seq`, action subsequence) |
 | AT-14 | Production uses env secrets; API + UI over HTTPS | **Partially verified.** Production config guards are tested (`test_at14_*`); HTTPS reachability **cannot be verified until deployed**. | `test_security.py`, `render.yaml`, `frontend/vercel.json` |
 
@@ -48,6 +48,14 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
 - **Bugs found by the new UI e2e test and fixed:** extraction review navigated to `/` after publish (relative
   links resolved against the nested review route); the Refresh button in the WI/QC editor sat inside a `<label>`,
   so clicking the label text triggered it.
+- **Test bug fixed:** the I-1 invariant helper in `test_reliability.py` read a non-existent
+  `Project.valid_approval_id`. It only ran when a race ended READY, so it passed intermittently and hid that the
+  READY branch was never actually checked. It now asserts exactly one APPROVED approval matching the current
+  baseline hash/version; the affected test then passed 8/8 repeated runs.
+- **CI fix (not pushed):** the first GitHub run failed because `minio/minio` is no longer pullable. CI now uses
+  RustFS 1.0.4, masks the throwaway keys, and fails fast if storage never becomes healthy.
+- **Tests added for documented controls:** JSON log redaction (secrets and bearer tokens) and the AI daily budget
+  cap.
 - **New validation:** QC checks on a pinned attribute must expect the pinned value (`QC_CHECK_STALE`). The UI now
   shows server validation findings with their codes.
 - **Security hardening:** demo seed never prints passwords and requires `FB_DEMO_PASSWORD` in production;
@@ -55,14 +63,15 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
   sanitized `Content-Disposition` on S3 presigned downloads; managed `postgres://` URLs normalized to psycopg.
 - **Dependencies:** `npm audit` 10 moderate (dev-only, `minimatch` via ESLint) → 0 via an `overrides` pin;
   `pip-audit` reports none.
-- **New tooling:** Playwright AT-12 spec, S3 storage tests (MinIO), extraction evaluation harness, benchmark
+- **New tooling:** Playwright AT-12 spec, S3 storage tests (RustFS/MinIO), extraction evaluation harness, benchmark
   script, CI workflow, `render.yaml`, `frontend/vercel.json`, Makefile.
 
 ## Known limitations
 
 - Live LLM extraction has never been run; its quality is unmeasured. The evaluation harness supports it (`--provider live`).
 - The fixture extractor is a line-grammar parser; prose BOM lines are (correctly) not extracted — recall on prose is 0.
-- CI workflow has not executed on GitHub; it was linted locally only.
+- CI has not passed on GitHub yet. The one run, on `1daf825`, failed before tests on the MinIO image pull. CI
+  actions are still on v4/v6 majors; GitHub forces them onto Node 24 with a deprecation warning.
 - Not deployed; HTTPS, managed Postgres/Redis, R2 and Render pre-deploy migrations are unverified in the cloud.
 - Single-region, single worker (beat embedded); no horizontal worker scaling yet.
 - No Sentry/trace sink; observability is JSON logs, correlation IDs and a token-protected `/metrics`.
@@ -72,6 +81,7 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
 ## Next work
 
 See `PARALLEL_AGENT_HANDOFF.md` for the split across agents. Highest value first:
-1. Create the GitHub repo and let CI run (needs your approval to commit/push).
+1. Commit and push the working tree, including the CI fix, and confirm all three CI jobs pass. This needs your
+   approval.
 2. Deploy per `DEPLOYMENT_GUIDE.md` and run the HTTPS smoke test to close AT-14.
 3. Run the evaluation harness and AT-12 with a live model once an API key and budget are approved.

@@ -1,4 +1,4 @@
-"""S3Storage against a real S3-compatible endpoint (MinIO locally / in CI). Skipped unless S3_TEST_ENDPOINT is set."""
+"""S3Storage against a real S3-compatible endpoint (RustFS or MinIO). Skipped unless S3_TEST_ENDPOINT is set."""
 
 import os
 import uuid

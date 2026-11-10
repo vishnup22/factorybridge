@@ -64,10 +64,16 @@ def assert_invariant_i1(pid: str) -> None:
         p = db.get(Project, uuid.UUID(pid))
         if p.status != "READY":
             return
-        a = db.get(ApprovalRequest, p.valid_approval_id) if p.valid_approval_id else None
-        assert a is not None and a.status == "APPROVED"
-        assert a.baseline_hash == state.current_baseline_hash(db, p)
-        assert a.baseline_version == p.baseline_version
+        approved = (
+            db.execute(
+                select(ApprovalRequest).where(ApprovalRequest.project_id == p.id, ApprovalRequest.status == "APPROVED")
+            )
+            .scalars()
+            .all()
+        )
+        assert len(approved) == 1
+        assert approved[0].baseline_hash == state.current_baseline_hash(db, p)
+        assert approved[0].baseline_version == p.baseline_version
 
 
 # ---------------- AT-08: approve vs edit race ----------------

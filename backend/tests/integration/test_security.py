@@ -1,16 +1,22 @@
 """Authentication, authorization, tenancy, input limits, AI-injection resistance, production guards."""
 
+import json
+import logging
 import time
 import uuid
 
 import jwt
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from app.core.config import _INSECURE_DEV_SECRET, Settings, get_settings
 from app.core.db import session_factory
 from app.core.security import hash_password
 from app.models import Organization, User
+from app.observability.logging import JsonFormatter
+from app.services.extraction import pipeline
+from app.services.extraction.providers import ProviderError
 from tests.integration.conftest import PASSWORD
 
 
@@ -344,3 +350,26 @@ def test_demo_seed_requires_secret_password_in_production(monkeypatch, capsys):
             monkeypatch.setenv("FB_DEMO_PASSWORD", value)
         assert seed.main() == 2
     assert "FB_DEMO_PASSWORD" in capsys.readouterr().err
+
+
+def test_json_logs_redact_secrets_and_bearer_tokens():
+    record = logging.LogRecord("t", logging.INFO, __file__, 1, "header Bearer abc.def-ghi", None, None)
+    record.fields = {"password": "hunter2-secret", "nested": {"api_key": "sk-test-key"}, "note": "Bearer xyz.123"}
+    line = JsonFormatter().format(record)
+    out = json.loads(line)
+    assert out["msg"] == "header Bearer [REDACTED]"
+    assert out["password"] == "[REDACTED]" and out["nested"]["api_key"] == "[REDACTED]"
+    assert out["note"] == "Bearer [REDACTED]"
+    assert not any(s in line for s in ("hunter2-secret", "sk-test-key", "abc.def-ghi", "xyz.123"))
+
+
+def test_live_extraction_refused_once_daily_budget_is_spent(monkeypatch):
+    s = get_settings()
+    with session_factory()() as db:
+        org_id = db.execute(select(Organization.id)).scalars().first()
+        monkeypatch.setattr(s, "ai_daily_budget_usd", 2.0)
+        pipeline._check_budget(db, org_id)
+        monkeypatch.setattr(s, "ai_daily_budget_usd", 0.0)
+        with pytest.raises(ProviderError) as e:
+            pipeline._check_budget(db, org_id)
+    assert e.value.code == "AI_BUDGET_EXCEEDED" and not e.value.retryable

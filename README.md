@@ -75,7 +75,7 @@ flowchart LR
 |---|---|
 | **Backend** | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, Celery, PyJWT, Argon2, pypdf, boto3 |
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query, React Router, React Flow (`@xyflow/react`) |
-| **Data** | PostgreSQL 16, Redis 7, S3-compatible private storage (e.g. Cloudflare R2, MinIO) |
+| **Data** | PostgreSQL 16, Redis 7, S3-compatible private storage (e.g. Cloudflare R2; RustFS in CI) |
 | **AI** | Optional Anthropic structured extraction; deterministic **fixture mode** by default (no network, no key) |
 | **Quality** | pytest, Hypothesis, Ruff, mypy, pip-audit, Vitest, Testing Library, Playwright, ESLint |
 | **Infra** | Docker Compose, GitHub Actions, Render Blueprint (API + worker + DB + Redis), Vercel (frontend) |
@@ -107,7 +107,17 @@ The integration suite covers the acceptance scenarios in the spec: stale-approva
 
 Extraction evaluation (fixture mode) can be regenerated with `scripts/evaluate_extraction.py`. Results are written to `docs/evaluation_results.json`.
 
+Measured results, including what has *not* been run, are in [`TEST_RESULTS.md`](TEST_RESULTS.md).
+
+## Status
+
+Phases 0 to 4 are implemented and verified locally. That includes the full flagship flow through the UI
+(Playwright) and through the live API with a real worker. Live LLM extraction has not been run yet, and nothing
+has been deployed. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md).
+
 ## Deployment
+
+Step-by-step guide, rollback and smoke test: [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md).
 
 - **API, worker, Postgres and Redis:** [`render.yaml`](render.yaml) Render Blueprint. Secrets are entered in the dashboard and none are committed.
 - **Frontend:** [`frontend/vercel.json`](frontend/vercel.json), a Vite static build with a strict CSP and security headers.
@@ -117,5 +127,11 @@ Extraction evaluation (fixture mode) can be regenerated with `scripts/evaluate_e
 | File | Purpose |
 |---|---|
 | [`FACTORYBRIDGE_MASTER_SPEC.md`](FACTORYBRIDGE_MASTER_SPEC.md) | Product and engineering spec (source of truth, acceptance tests AT-01 to AT-14) |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Module boundaries, core flows, reliability and security design |
+| [`API_CONTRACTS.md`](API_CONTRACTS.md) | HTTP conventions (envelope, errors, idempotency, concurrency) and endpoint map |
+| [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) · [`TEST_RESULTS.md`](TEST_RESULTS.md) | What's done, how it was verified, known limitations |
+| [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) | Render + Vercel + R2 deployment, monitoring, rollback |
+| [`PARALLEL_AGENT_HANDOFF.md`](PARALLEL_AGENT_HANDOFF.md) | Worktrees, file ownership and contracts for parallel agents |
+| [`docs/`](docs) | ADRs, threat model, extraction evaluation, demo script |
 | [`AGENTS.md`](AGENTS.md) | Engineering rules for AI coding agents working on this repo |
 | `CURSOR_START_HERE.md`, `CODEX_REVIEW_PROMPT.md`, `CLAUDE_CODE_REVIEW_PROMPT.md` | Agent kickoff and review prompts |
