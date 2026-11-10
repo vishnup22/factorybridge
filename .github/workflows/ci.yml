@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        # Throwaway CI-only credentials; the database is not reachable outside the runner.
+        env: { POSTGRES_USER: ci, POSTGRES_PASSWORD: ci, POSTGRES_DB: factorybridge_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci -d factorybridge_test" --health-interval 3s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://ci:ci@127.0.0.1:5432/factorybridge_test
+      DATABASE_URL: postgresql+psycopg://ci:ci@127.0.0.1:5432/factorybridge_test
+      REDIS_URL: redis://127.0.0.1:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { python-version: "3.12" }
+      - run: uv sync --frozen
+      - name: Lint and types
+        run: |
+          uv run ruff check . ../scripts ../demo
+          uv run ruff format --check . ../scripts ../demo
+          uv run mypy
+      - name: Migrations apply and match models
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+      - name: Start MinIO for S3 storage tests
+        run: |
+          {
+            echo "S3_TEST_ACCESS_KEY=ci$(openssl rand -hex 6)"
+            echo "S3_TEST_SECRET_KEY=$(openssl rand -hex 20)"
+            echo "S3_TEST_ENDPOINT=http://127.0.0.1:9000"
+          } >> "$GITHUB_ENV"
+      - run: |
+          docker run -d --name minio -p 127.0.0.1:9000:9000 \
+            -e MINIO_ROOT_USER="$S3_TEST_ACCESS_KEY" -e MINIO_ROOT_PASSWORD="$S3_TEST_SECRET_KEY" \
+            minio/minio:latest server /data
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:9000/minio/health/live && break; sleep 1; done
+      - name: Tests (unit + integration on real Postgres/Redis/MinIO)
+        run: uv run pytest -q -p no:logging
+      - name: Extraction evaluation (fixture mode) and impact benchmark
+        run: |
+          uv run python ../scripts/evaluate_extraction.py --json eval.json
+          python3 -c "import json,sys; m=json.load(open('eval.json'))['metrics']; sys.exit(m['unsupported_assertion_rate'] or m['injected_candidates'] or m['evidence_validity_rate'] != 1.0)"
+          uv run python ../scripts/benchmark.py
+      - name: Dependency audit
+        run: uv run --with pip-audit pip-audit
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=moderate
+
+  e2e:
+    # AT-12: full stack in Docker (fixture AI mode), API demo script + Playwright UI flow.
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate throwaway stack secrets
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+            echo "JWT_SECRET=$(openssl rand -hex 32)"
+            echo "FB_DEMO_PASSWORD=$(openssl rand -hex 16)"
+          } >> "$GITHUB_ENV"
+      - run: docker compose up -d --build --wait
+      - name: Seed synthetic demo accounts
+        run: docker compose exec -T -e FB_DEMO_PASSWORD api python -m demo.seed
+      - uses: astral-sh/setup-uv@v6
+        with: { python-version: "3.12" }
+      - name: API flagship demo
+        working-directory: backend
+        run: uv run --frozen python ../scripts/demo_flow.py --base-url http://127.0.0.1:8000
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - name: Playwright UI flow
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
+      - if: failure()
+        run: docker compose logs --no-color --tail 300 api worker
+      - if: always()
+        run: docker compose down -v

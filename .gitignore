@@ -1,0 +1,37 @@
+# secrets & local state
+.env
+.env.*
+!.env.example
+var/
+backend/var/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# node
+node_modules
+playwright-report/
+test-results//
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+
+# build-pack extraction scratch
+_buildpack/
+
+# os/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# build-pack archive (contents already in repo)
+FactoryBridge_Cursor_Build_Pack.zip

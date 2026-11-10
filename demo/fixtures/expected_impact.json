@@ -1,0 +1,20 @@
+{
+  "change": "EC-001 ACTUATOR_MAIN: ACT-100 rev A (24V, M4-40) -> ACT-200 rev B (48V, M6-50)",
+  "changed_nodes": ["BOM_LINE:ACTUATOR_MAIN"],
+  "impacted": [
+    {"node": "COMPATIBILITY_CHECK:ACTUATOR_MOUNT", "severity": "CRITICAL", "reason_code": "MOUNTING_INTERFACE_CHANGED", "evaluation": "FAIL"},
+    {"node": "COMPATIBILITY_CHECK:MOTOR_VOLTAGE", "severity": "CRITICAL", "reason_code": "VOLTAGE_COMPATIBILITY_CHANGED", "evaluation": "FAIL"},
+    {"node": "READINESS_APPROVAL:PROJECT", "severity": "CRITICAL", "reason_code": "READINESS_APPROVAL_STALE"},
+    {"node": "QC_PLAN:MOTOR_FUNCTION_TEST", "severity": "HIGH", "reason_code": "QC_PLAN_STALE"},
+    {"node": "SUPPLIER_SELECTION:ACTUATOR_MAIN", "severity": "HIGH", "reason_code": "SOURCING_REVALIDATION_REQUIRED"},
+    {"node": "WORK_INSTRUCTION:INSTALL_ACTUATOR", "severity": "HIGH", "reason_code": "WORK_INSTRUCTION_STALE"}
+  ],
+  "must_not_be_impacted": [
+    "COMPATIBILITY_CHECK:POWER_SUPPLY",
+    "SUPPLIER_SELECTION:CONTROLLER",
+    "WORK_INSTRUCTION:PACKAGE_BATTERY",
+    "BOM_LINE:BATTERY",
+    "BOM_LINE:SENSOR"
+  ],
+  "readiness_after_publish": "BLOCKED"
+}

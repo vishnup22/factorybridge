@@ -1,0 +1,102 @@
+# Render Blueprint for the FactoryBridge API, worker, Postgres and Key Value (Redis).
+# The frontend deploys separately to Vercel (frontend/vercel.json). See DEPLOYMENT_GUIDE.md.
+# `sync: false` values are secrets you enter in the Render Dashboard during Blueprint creation; none are committed.
+# Render does not allow `sync: false` or service references inside env groups, so those are declared per service.
+# Plans are left at Render defaults; review pricing before applying the Blueprint.
+
+services:
+  - type: web
+    name: factorybridge-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers'
+    preDeployCommand: alembic upgrade head
+    initialDeployHook: python -m demo.seed
+    healthCheckPath: /api/v1/health/live
+    autoDeployTrigger: "off"
+    envVars:
+      - fromGroup: factorybridge-shared
+      - key: DATABASE_URL
+        fromDatabase: { name: factorybridge-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: factorybridge-redis, property: connectionString }
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # https://<your-app>.vercel.app (https only; enforced at startup)
+      - key: FB_DEMO_PASSWORD
+        sync: false # >= 16 chars; used by initialDeployHook to seed the synthetic demo accounts
+      - key: OBJECT_STORAGE_ENDPOINT
+        sync: false # e.g. https://<account-id>.r2.cloudflarestorage.com
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_ACCESS_KEY
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false # optional; leave empty for fixture mode
+      - key: AI_MODEL
+        sync: false # optional; required only with AI_PROVIDER=anthropic
+
+  - type: worker
+    name: factorybridge-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    # -B embeds the beat scheduler (outbox dispatch + job recovery); keep exactly one worker instance.
+    dockerCommand: celery -A app.workers.celery_app worker -B --loglevel=INFO --concurrency=2
+    numInstances: 1
+    autoDeployTrigger: "off"
+    envVars:
+      - fromGroup: factorybridge-shared
+      - key: DATABASE_URL
+        fromDatabase: { name: factorybridge-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: factorybridge-redis, property: connectionString }
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # same value as the API (validated at startup even though the worker serves no HTTP)
+      - key: OBJECT_STORAGE_ENDPOINT
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_ACCESS_KEY
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
+
+  - type: keyvalue
+    name: factorybridge-redis
+    ipAllowList: [] # private network only
+    maxmemoryPolicy: noeviction # Celery broker and idempotency/rate-limit keys must not be evicted
+
+databases:
+  - name: factorybridge-db
+    databaseName: factorybridge
+    postgresMajorVersion: "16"
+    ipAllowList: [] # private network only; no public database port
+
+envVarGroups:
+  - name: factorybridge-shared
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true # shared so API and worker agree; never committed
+      - key: HEALTH_TOKEN
+        generateValue: true # required as X-Health-Token for /health/ready and /metrics
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: OBJECT_STORAGE_REGION
+        value: auto
+      - key: AI_PROVIDER
+        value: fixture # set to "anthropic" only after ANTHROPIC_API_KEY and AI_MODEL are set on both services
+      - key: DEMO_SEED_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO

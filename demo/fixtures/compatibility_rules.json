@@ -1,0 +1,39 @@
+{
+  "rule_set": "warehouse_scout_v1",
+  "note": "SYNTHETIC engineering constraints for demonstration only. Not real part compatibility data.",
+  "rules": [
+    {
+      "rule_code": "MOTOR_VOLTAGE",
+      "check_kind": "ATTRIBUTE_EQUALS",
+      "description": "Actuator nominal voltage must equal controller output voltage",
+      "is_critical": true,
+      "params": {
+        "left": {"line_key": "ACTUATOR_MAIN", "attribute": "voltage_v"},
+        "right": {"line_key": "CONTROLLER", "attribute": "output_voltage_v"},
+        "reason_code": "VOLTAGE_COMPATIBILITY_CHANGED"
+      }
+    },
+    {
+      "rule_code": "ACTUATOR_MOUNT",
+      "check_kind": "ATTRIBUTE_IN_LIST",
+      "description": "Actuator mounting pattern must be accepted by the chassis",
+      "is_critical": true,
+      "params": {
+        "value": {"line_key": "ACTUATOR_MAIN", "attribute": "mount_pattern"},
+        "allowed": {"line_key": "CHASSIS", "attribute": "accepted_mounts"},
+        "reason_code": "MOUNTING_INTERFACE_CHANGED"
+      }
+    },
+    {
+      "rule_code": "POWER_SUPPLY",
+      "check_kind": "ATTRIBUTE_EQUALS",
+      "description": "Battery voltage must equal controller input voltage",
+      "is_critical": true,
+      "params": {
+        "left": {"line_key": "BATTERY", "attribute": "voltage_v"},
+        "right": {"line_key": "CONTROLLER", "attribute": "input_voltage_v"},
+        "reason_code": "VOLTAGE_COMPATIBILITY_CHANGED"
+      }
+    }
+  ]
+}

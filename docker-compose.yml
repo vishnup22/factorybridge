@@ -1,0 +1,77 @@
+# Local development stack. Database/Redis ports are bound to 127.0.0.1 only.
+name: factorybridge
+
+x-backend-env: &backend-env
+  ENVIRONMENT: development
+  DATABASE_URL: postgresql+psycopg://factorybridge:${POSTGRES_PASSWORD:-factorybridge}@postgres:5432/factorybridge
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-jwt-secret-change-me-0123456789}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+  STORAGE_BACKEND: local
+  LOCAL_STORAGE_PATH: /data/storage
+  AI_PROVIDER: ${AI_PROVIDER:-fixture}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AI_MODEL: ${AI_MODEL:-}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DEMO_SEED_ENABLED: "true"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: factorybridge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-factorybridge}
+      POSTGRES_DB: factorybridge
+    ports: ["127.0.0.1:${POSTGRES_HOST_PORT:-55432}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data, ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U factorybridge -d factorybridge"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment: *backend-env
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: [storage:/data/storage]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/v1/health/live')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment: *backend-env
+    # -B embeds the beat scheduler (outbox dispatch + job recovery). Run exactly one beat in production.
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-B", "--loglevel=INFO", "--concurrency=2"]
+    volumes: [storage:/data/storage]
+    depends_on:
+      api: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./frontend
+      args: { VITE_API_BASE_URL: "http://localhost:8000" }
+    ports: ["127.0.0.1:5173:80"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  storage:

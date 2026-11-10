@@ -1,0 +1,6 @@
+line_key,part_number,part_revision,description,quantity,unit,voltage_v,output_voltage_v,input_voltage_v,mount_pattern,accepted_mounts,connector
+ACTUATOR_MAIN,ACT-200,B,Synthetic 48V drive actuator,2,each,48,,,M6-50,,JST-X
+CONTROLLER,CTRL-24,A,Synthetic motor controller,1,each,,24,24,,,JST-X
+BATTERY,BAT-24,A,Synthetic battery pack,1,each,24,,,,,
+CHASSIS,CHS-01,A,Synthetic chassis frame,1,each,,,,,M4-40,
+SENSOR,SNS-02,A,Synthetic proximity sensor,2,each,24,,,,,

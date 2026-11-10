@@ -1,0 +1,52 @@
+{
+  "description": "Synthetic flagship scenario: R1 (24V / M4-40) -> EC-001 R2 (ACT-200 48V / M6-50) -> EC-002 R3 (48V platform) -> re-approval. Fictional data only.",
+  "ec001": {
+    "reason": "Customer revised drive actuator to 48V ACT-200 rev B (synthetic)",
+    "changes": [
+      {"line_key": "ACTUATOR_MAIN", "operation": "UPDATE",
+       "new": {"part_number": "ACT-200", "description": "Synthetic 48V drive actuator", "quantity": 2, "unit": "each",
+               "part_revision": "B", "attributes": {"voltage_v": 48, "mount_pattern": "M6-50", "connector": "JST-X"}}}
+    ]
+  },
+  "ec002": {
+    "reason": "Move controller, battery and chassis to the 48V / M6-50 platform (synthetic)",
+    "changes": [
+      {"line_key": "CONTROLLER", "operation": "UPDATE",
+       "new": {"part_number": "CTRL-48", "part_revision": "A", "description": "Synthetic 48V motor controller",
+               "attributes": {"output_voltage_v": 48, "input_voltage_v": 48, "connector": "JST-X"}}},
+      {"line_key": "BATTERY", "operation": "UPDATE",
+       "new": {"part_number": "BAT-48", "part_revision": "A", "description": "Synthetic 48V battery pack",
+               "attributes": {"voltage_v": 48}}},
+      {"line_key": "CHASSIS", "operation": "UPDATE",
+       "new": {"part_number": "CHS-02", "part_revision": "A", "description": "Synthetic chassis frame (dual mount)",
+               "attributes": {"accepted_mounts": ["M4-40", "M6-50"]}}}
+    ]
+  },
+  "resolutions": [
+    {"node": "SUPPLIER_SELECTION:ACTUATOR_MAIN", "content": {"line_key": "ACTUATOR_MAIN", "supplier_option_code": "SUP-200"},
+     "note": "Selected approved synthetic source for ACT-200 rev B"},
+    {"node": "SUPPLIER_SELECTION:CONTROLLER", "content": {"line_key": "CONTROLLER", "supplier_option_code": "SUP-CTRL-48"},
+     "note": "Selected approved synthetic source for CTRL-48"},
+    {"node": "COMPATIBILITY_CHECK:MOTOR_VOLTAGE", "content": {}, "note": "Re-ran rule against R3: 48V actuator on 48V controller"},
+    {"node": "COMPATIBILITY_CHECK:ACTUATOR_MOUNT", "content": {}, "note": "Re-ran rule against R3: CHS-02 accepts M6-50"},
+    {"node": "COMPATIBILITY_CHECK:POWER_SUPPLY", "content": {}, "note": "Re-ran rule against R3: 48V battery feeds 48V controller"},
+    {"node": "WORK_INSTRUCTION:INSTALL_ACTUATOR", "note": "Rewrote install steps for ACT-200 on CHS-02 with M6-50 pattern",
+     "content": {"document_code": "WI-ACT-01",
+                 "steps": ["Verify ACT-200 rev B against traveler", "Fasten actuator using M6-50 pattern on CHS-02",
+                           "Connect harness to CTRL-48", "Torque fasteners per synthetic spec sheet rev B"],
+                 "references": {"ACTUATOR_MAIN": {"part_number": "ACT-200", "part_revision": "B",
+                                                  "attributes": {"mount_pattern": "M6-50", "voltage_v": 48}},
+                                "CHASSIS": {"part_number": "CHS-02", "part_revision": "A"}}}},
+    {"node": "WORK_INSTRUCTION:PACKAGE_BATTERY", "note": "Updated packaging steps for the 48V battery",
+     "content": {"document_code": "WI-BAT-01", "steps": ["Inspect 48V label", "Insert into foam carrier", "Seal and label"],
+                 "references": {"BATTERY": {"part_number": "BAT-48", "part_revision": "A", "attributes": {"voltage_v": 48}}}}},
+    {"node": "QC_PLAN:MOTOR_FUNCTION_TEST", "note": "QC updated to 48V supply check, pinned to new install instruction",
+     "pin_artifact_revision_of": "WORK_INSTRUCTION:INSTALL_ACTUATOR",
+     "content": {"document_code": "QC-ACT-01",
+                 "checks": [{"name": "Supply voltage at actuator", "parameter": "voltage_v", "expected": 48},
+                            {"name": "No-load spin test", "parameter": "spin", "expected": "PASS"}],
+                 "references": {"ACTUATOR_MAIN": {"part_number": "ACT-200", "part_revision": "B", "attributes": {"voltage_v": 48}},
+                                "CONTROLLER": {"part_number": "CTRL-48", "part_revision": "A"}},
+                 "artifact_refs": {"WORK_INSTRUCTION:INSTALL_ACTUATOR": 0}}}
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "plan": "warehouse_scout_v1",
+  "note": "Explicit dependency mappings (edge = 'revalidate target if source changes'). Compatibility-check edges are derived from compatibility_rules.json; BOM_LINE -> READINESS_APPROVAL edges are added for every BOM line.",
+  "edges": [
+    {"source": "BOM_LINE:ACTUATOR_MAIN", "target": "SUPPLIER_SELECTION:ACTUATOR_MAIN", "dependency_type": "SOURCING", "rule_code": "SRC-PART-MATCH"},
+    {"source": "BOM_LINE:CONTROLLER", "target": "SUPPLIER_SELECTION:CONTROLLER", "dependency_type": "SOURCING", "rule_code": "SRC-PART-MATCH"},
+    {"source": "BOM_LINE:ACTUATOR_MAIN", "target": "WORK_INSTRUCTION:INSTALL_ACTUATOR", "dependency_type": "ASSEMBLY", "rule_code": "WI-PART-REF"},
+    {"source": "BOM_LINE:CHASSIS", "target": "WORK_INSTRUCTION:INSTALL_ACTUATOR", "dependency_type": "ASSEMBLY", "rule_code": "WI-PART-REF"},
+    {"source": "BOM_LINE:BATTERY", "target": "WORK_INSTRUCTION:PACKAGE_BATTERY", "dependency_type": "ASSEMBLY", "rule_code": "WI-PART-REF"},
+    {"source": "BOM_LINE:ACTUATOR_MAIN", "target": "QC_PLAN:MOTOR_FUNCTION_TEST", "dependency_type": "QUALITY", "rule_code": "QC-PART-REF"},
+    {"source": "BOM_LINE:CONTROLLER", "target": "QC_PLAN:MOTOR_FUNCTION_TEST", "dependency_type": "QUALITY", "rule_code": "QC-PART-REF"},
+    {"source": "WORK_INSTRUCTION:INSTALL_ACTUATOR", "target": "QC_PLAN:MOTOR_FUNCTION_TEST", "dependency_type": "QUALITY", "rule_code": "QC-WI-REF"}
+  ],
+  "artifacts": [
+    {
+      "node_key": "SUPPLIER_SELECTION:ACTUATOR_MAIN",
+      "title": "Actuator sourcing (synthetic)",
+      "content": {"line_key": "ACTUATOR_MAIN", "supplier_option_code": "SUP-100", "note": "Baseline synthetic source"}
+    },
+    {
+      "node_key": "SUPPLIER_SELECTION:CONTROLLER",
+      "title": "Controller sourcing (synthetic)",
+      "content": {"line_key": "CONTROLLER", "supplier_option_code": "SUP-CTRL-24", "note": "Baseline synthetic source"}
+    },
+    {"node_key": "COMPATIBILITY_CHECK:MOTOR_VOLTAGE", "title": "Motor voltage check"},
+    {"node_key": "COMPATIBILITY_CHECK:ACTUATOR_MOUNT", "title": "Actuator mounting check"},
+    {"node_key": "COMPATIBILITY_CHECK:POWER_SUPPLY", "title": "Battery/controller supply check"},
+    {
+      "node_key": "WORK_INSTRUCTION:INSTALL_ACTUATOR",
+      "title": "WI-ACT-01 Install drive actuators",
+      "content": {
+        "document_code": "WI-ACT-01",
+        "steps": [
+          "Verify actuator part number and revision against traveler",
+          "Fasten actuator to chassis using the specified mounting pattern",
+          "Connect actuator harness to controller port",
+          "Torque fasteners per synthetic spec sheet"
+        ],
+        "references": {
+          "ACTUATOR_MAIN": {"part_number": "ACT-100", "part_revision": "A", "attributes": {"mount_pattern": "M4-40", "voltage_v": 24}},
+          "CHASSIS": {"part_number": "CHS-01", "part_revision": "A"}
+        }
+      }
+    },
+    {
+      "node_key": "WORK_INSTRUCTION:PACKAGE_BATTERY",
+      "title": "WI-BAT-01 Package battery pack",
+      "content": {
+        "document_code": "WI-BAT-01",
+        "steps": ["Inspect battery label", "Insert into foam carrier", "Seal and label shipping box"],
+        "references": {"BATTERY": {"part_number": "BAT-24", "part_revision": "A", "attributes": {"voltage_v": 24}}}
+      }
+    },
+    {
+      "node_key": "QC_PLAN:MOTOR_FUNCTION_TEST",
+      "title": "QC-ACT-01 Motor function test",
+      "content": {
+        "document_code": "QC-ACT-01",
+        "checks": [
+          {"name": "Supply voltage at actuator", "parameter": "voltage_v", "expected": 24},
+          {"name": "No-load spin test", "parameter": "spin", "expected": "PASS"}
+        ],
+        "references": {
+          "ACTUATOR_MAIN": {"part_number": "ACT-100", "part_revision": "A", "attributes": {"voltage_v": 24}},
+          "CONTROLLER": {"part_number": "CTRL-24", "part_revision": "A"}
+        },
+        "artifact_refs": {"WORK_INSTRUCTION:INSTALL_ACTUATOR": 1}
+      }
+    }
+  ]
+}

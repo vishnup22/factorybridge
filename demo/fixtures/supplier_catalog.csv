@@ -1,0 +1,7 @@
+option_code,vendor_name,part_number,part_revision,available_qty,lead_days,unit_cost_usd,approved_for_part
+SUP-100,Synthetic Motion Supply,ACT-100,A,500,14,42.00,true
+SUP-110,Synthetic Motion Supply,ACT-110,A,400,10,44.50,true
+SUP-200,Synthetic Drive Works,ACT-200,B,300,21,61.00,true
+SUP-201,Unvetted Parts Broker,ACT-200,B,1000,5,39.00,false
+SUP-CTRL-24,Synthetic Controls Ltd,CTRL-24,A,250,12,88.00,true
+SUP-CTRL-48,Synthetic Controls Ltd,CTRL-48,A,150,18,104.00,true
