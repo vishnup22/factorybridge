@@ -4,7 +4,7 @@
 
 **AI-assisted manufacturing change intelligence: going from changing hardware designs to explainable, approval-gated manufacturing readiness.**
 
-[![CI](https://github.com/pulipakav1/factorybridge/actions/workflows/ci.yml/badge.svg)](https://github.com/pulipakav1/factorybridge/actions/workflows/ci.yml)
+[![CI](https://github.com/vishnup22/factorybridge/actions/workflows/ci.yml/badge.svg)](https://github.com/vishnup22/factorybridge/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
