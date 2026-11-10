@@ -29,10 +29,8 @@ Only results of commands that were actually executed are recorded here. Environm
 
 | Run | Commit | Result |
 |---|---|---|
-| [42751873276](https://github.com/vishnup22/factorybridge/actions/runs/42751873276) | `1daf825` (main) | **Failed.** The frontend job passed. In the backend job, lint, types and migrations passed, then the job failed starting MinIO (`pull access denied for minio/minio`: MinIO no longer publishes community images). Tests and e2e did not run. |
-
-The fix (switch to RustFS and mask the throwaway keys) is in the working tree. It is not pushed, and CI has not
-passed on GitHub yet.
+| [42751873276](https://github.com/vishnup22/factorybridge/actions/runs/42751873276) | `1daf825` (main) | **Failed.** Frontend passed. Backend failed pulling `minio/minio` (community images no longer published). Tests and e2e did not run. |
+| [42755647032](https://github.com/vishnup22/factorybridge/actions/runs/42755647032) | `8a24681` (main) | **Success.** frontend 17s ✓ · backend 1m48s ✓ · e2e 6m27s ✓. S3 tests used pinned `rustfs/rustfs:1.0.4`. |
 
 ## Failure found during the final run
 
@@ -70,6 +68,5 @@ deterministic parser and say nothing about live-LLM quality.
 ## Not run
 
 - Live LLM extraction (no `ANTHROPIC_API_KEY`) — AT-12 live variant and `--provider live` evaluation.
-- A passing CI run on GitHub Actions. That needs the CI fix pushed, which needs your approval.
 - Any cloud deployment, HTTPS smoke test, managed Postgres/Redis, Cloudflare R2.
 - Load testing beyond the single-client benchmark above. No coverage percentage was measured.

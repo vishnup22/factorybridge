@@ -1,7 +1,11 @@
 # Parallel agent handoff
 
 Three implementation agents plus one integration owner. Each works in **its own git worktree and branch**, so no
-two agents write to the same working directory. The worktrees already exist, all at `1daf825`:
+two agents write to the same working directory.
+
+**Verified baseline (start here):** `8a246815d78d689d839a04c2b80d11dadfb94481` on `main`.
+CI green: [run 42755647032](https://github.com/vishnup22/factorybridge/actions/runs/42755647032)
+(backend ✓, frontend ✓, e2e ✓). Feature branches are fast-forwarded to this commit after CI passed.
 
 | Role | Agent | Worktree (sibling of this repo) | Branch |
 |---|---|---|---|
@@ -13,12 +17,11 @@ two agents write to the same working directory. The worktrees already exist, all
 `main` (this directory) is the integration target. Nobody edits it directly. Changes reach it only by the
 integration owner merging reviewed branches.
 
-## Before anyone starts (needs your approval)
+## Before anyone starts
 
-The four branches point at `1daf825`. The working tree in this directory has newer, uncommitted work: the CI fix,
-a fixed reliability test, and these docs. Commit it on `main`. Then, because the feature branches have no commits
-of their own yet, move each one forward, for example `git -C ../factorybridge-ui merge --ff-only main`. Otherwise
-every agent starts from a CI that fails.
+1. Confirm your worktree branch tip equals `8a24681` (or a later merge of `main`).
+2. Create your isolated test DB / Redis index (table below) before running integration tests.
+3. Do not deploy or request paid infrastructure until the integration owner says so.
 
 ## Shared rules
 

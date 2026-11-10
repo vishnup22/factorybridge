@@ -3,11 +3,15 @@
 Last updated: 2026-11-09. Every "done" item below was exercised by a command whose result is in
 [`TEST_RESULTS.md`](TEST_RESULTS.md). "Not done" means not built or not verified — nothing here is aspirational.
 
+**Verified baseline:** `8a246815d78d689d839a04c2b80d11dadfb94481` on `main`.
+GitHub CI green: [run 42755647032](https://github.com/vishnup22/factorybridge/actions/runs/42755647032)
+(backend ✓, frontend ✓, e2e ✓).
+
 ## Summary
 
 | Phase (spec §14) | Status |
 |---|---|
-| 0 — Foundation (compose stack, config, health, logging, lint, CI) | Done locally. **First GitHub CI run failed** (MinIO image no longer pullable); fix ready in the working tree, not pushed. |
+| 0 — Foundation (compose stack, config, health, logging, lint, CI) | Done. GitHub CI green on `8a24681` (RustFS 1.0.4 S3 fixture). |
 | 1 — Domain model + deterministic demo | Done |
 | 2 — Approval integrity + reliability | Done |
 | 3 — Frontend demo | Done; full flagship flow verified in Chromium via Playwright |
@@ -52,8 +56,9 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
   `Project.valid_approval_id`. It only ran when a race ended READY, so it passed intermittently and hid that the
   READY branch was never actually checked. It now asserts exactly one APPROVED approval matching the current
   baseline hash/version; the affected test then passed 8/8 repeated runs.
-- **CI fix (not pushed):** the first GitHub run failed because `minio/minio` is no longer pullable. CI now uses
-  RustFS 1.0.4, masks the throwaway keys, and fails fast if storage never becomes healthy.
+- **CI fix (pushed and verified):** the first GitHub run failed because `minio/minio` is no longer pullable. CI
+  now uses pinned `rustfs/rustfs:1.0.4`, masks throwaway keys, and fails fast if storage never becomes healthy.
+  Confirmed green on [run 42755647032](https://github.com/vishnup22/factorybridge/actions/runs/42755647032).
 - **Tests added for documented controls:** JSON log redaction (secrets and bearer tokens) and the AI daily budget
   cap.
 - **New validation:** QC checks on a pinned attribute must expect the pinned value (`QC_CHECK_STALE`). The UI now
@@ -70,8 +75,7 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
 
 - Live LLM extraction has never been run; its quality is unmeasured. The evaluation harness supports it (`--provider live`).
 - The fixture extractor is a line-grammar parser; prose BOM lines are (correctly) not extracted — recall on prose is 0.
-- CI has not passed on GitHub yet. The one run, on `1daf825`, failed before tests on the MinIO image pull. CI
-  actions are still on v4/v6 majors; GitHub forces them onto Node 24 with a deprecation warning.
+- CI actions are still on v4/v6 majors; GitHub forces them onto Node 24 with a deprecation warning (non-blocking).
 - Not deployed; HTTPS, managed Postgres/Redis, R2 and Render pre-deploy migrations are unverified in the cloud.
 - Single-region, single worker (beat embedded); no horizontal worker scaling yet.
 - No Sentry/trace sink; observability is JSON logs, correlation IDs and a token-protected `/metrics`.
@@ -81,7 +85,6 @@ Last updated: 2026-11-09. Every "done" item below was exercised by a command who
 ## Next work
 
 See `PARALLEL_AGENT_HANDOFF.md` for the split across agents. Highest value first:
-1. Commit and push the working tree, including the CI fix, and confirm all three CI jobs pass. This needs your
-   approval.
-2. Deploy per `DEPLOYMENT_GUIDE.md` and run the HTTPS smoke test to close AT-14.
+1. Parallel agents start from verified baseline `8a24681` (worktrees advanced after green CI).
+2. Deploy per `DEPLOYMENT_GUIDE.md` and run the HTTPS smoke test to close AT-14 (needs accounts/billing).
 3. Run the evaluation harness and AT-12 with a live model once an API key and budget are approved.
